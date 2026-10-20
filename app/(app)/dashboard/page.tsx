@@ -178,7 +178,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <Link
                   href="/jd"
-                  className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-xs font-medium text-slate-800 dark:text-slate-200 transition-colors"
+                  className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-xs font-medium text-slate-800 dark:text-slate-200 transition-colors"
                 >
                   <span className="flex items-center gap-2">
                     <FileSearch className="w-4 h-4 text-blue-600" />
@@ -188,7 +188,7 @@ export default function DashboardPage() {
                 </Link>
                 <Link
                   href="/coach"
-                  className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-xs font-medium text-slate-800 dark:text-slate-200 transition-colors"
+                  className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-xs font-medium text-slate-800 dark:text-slate-200 transition-colors"
                 >
                   <span className="flex items-center gap-2">
                     <MessageSquareCheck className="w-4 h-4 text-emerald-600" />

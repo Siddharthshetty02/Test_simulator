@@ -295,7 +295,7 @@ export default function JDAnalyzerPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {analysis.priority_topics.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors">
+                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                           <td className="py-3 px-3 font-semibold text-slate-900 dark:text-slate-100">
                             {item.topic}
                           </td>
@@ -370,7 +370,7 @@ export default function JDAnalyzerPage() {
                   {analysis.likely_questions.map((q, idx) => (
                     <div
                       key={idx}
-                      className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 flex items-start gap-3 text-xs"
+                      className="p-3.5 rounded-xl border border-slate-200/60 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 flex items-start gap-3 text-xs"
                     >
                       <span className="w-6 h-6 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 shrink-0 mt-0.5">
                         {idx + 1}

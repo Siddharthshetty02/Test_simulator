@@ -133,16 +133,19 @@ export function QuizResults({ attempt, onRetake }: QuizResultsProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {Object.entries(attempt.topicAccuracy).map(([topic, stats]) => {
               const acc = Math.round((stats.correct / stats.total) * 100);
+              const label = topic.toLowerCase().includes("full mock")
+                ? "Full Mock Assessment"
+                : topic;
               return (
                 <div
                   key={topic}
-                  className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 space-y-2"
+                  className="p-3.5 rounded-xl border border-slate-200/60 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 space-y-2"
                 >
                   <div className="flex items-center justify-between text-xs font-semibold">
                     <span className="text-slate-800 dark:text-slate-200 truncate pr-2">
-                      {topic}
+                      {label}
                     </span>
-                    <span className={acc >= 70 ? "text-emerald-600" : "text-amber-600"}>
+                    <span className={acc >= 70 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
                       {stats.correct}/{stats.total} ({acc}%)
                     </span>
                   </div>

@@ -120,7 +120,7 @@ export function WeakTopicsChart({ topicStats }: WeakTopicsChartProps) {
 
       {/* Recommended Focus Area Advice */}
       {weakTopics.length > 0 && (
-        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
+        <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 text-xs space-y-1.5">
           <span className="font-semibold text-slate-800 dark:text-slate-200">
             Recommended Revision Focus:
           </span>

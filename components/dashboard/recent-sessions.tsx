@@ -58,7 +58,7 @@ export function RecentSessions({ sessions }: RecentSessionsProps) {
         {sessions.map((item) => (
           <div
             key={item.id}
-            className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 flex items-center justify-between gap-3 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+            className="p-3.5 rounded-xl border border-slate-200/60 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 flex items-center justify-between gap-3 hover:border-blue-500/40 dark:hover:border-slate-700 transition-all"
           >
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0">

@@ -51,9 +51,21 @@ function normalizeQuestions(rawList: unknown[]): QuizQuestion[] {
         options = options.slice(0, 4);
       }
 
+      const FULL_MOCK_SECTIONS = [
+        "English & Verbal Ability",
+        "Git & Version Control",
+        "General Data Science",
+        "DS Fundamentals",
+        "Engineering & OOP",
+      ];
+
+      const topicName = isFullMock
+        ? FULL_MOCK_SECTIONS[Math.floor(idx / 5)] || String(item.topic || "Data Science").trim()
+        : String(item.topic || "Data Science").trim();
+
       return {
         id: typeof item.id === "number" ? item.id : idx + 1,
-        topic: String(item.topic || "Data Science").trim(),
+        topic: topicName,
         question: String(item.question || `Practice question ${idx + 1}`).trim(),
         options,
         answerIndex: answerIdx,
@@ -62,7 +74,7 @@ function normalizeQuestions(rawList: unknown[]): QuizQuestion[] {
     });
 }
 
-function tryParseQuizJson(raw: string): { success: boolean; data?: { questions: QuizQuestion[] }; error?: string } {
+function tryParseQuizJson(raw: string, isFullMock = false): { success: boolean; data?: { questions: QuizQuestion[] }; error?: string } {
   try {
     const parsed = extractJson(raw);
     let rawQuestions: unknown[] = [];
@@ -81,7 +93,7 @@ function tryParseQuizJson(raw: string): { success: boolean; data?: { questions: 
       return { success: false, error: "No question array found in response" };
     }
 
-    const normalized = normalizeQuestions(rawQuestions);
+    const normalized = normalizeQuestions(rawQuestions, isFullMock);
     if (!normalized.length) {
       return { success: false, error: "Questions could not be parsed into valid items" };
     }
@@ -143,7 +155,8 @@ export async function POST(req: NextRequest) {
       temperature: 0.4,
     });
 
-    const firstParse = tryParseQuizJson(firstCall.text || "");
+    const isFullMock = section === "full_mock";
+    const firstParse = tryParseQuizJson(firstCall.text || "", isFullMock);
     if (firstParse.success && firstParse.data) {
       return NextResponse.json(firstParse.data);
     }
@@ -166,7 +179,7 @@ export async function POST(req: NextRequest) {
       temperature: 0.2,
     });
 
-    const retryParse = tryParseQuizJson(retryCall.text || "");
+    const retryParse = tryParseQuizJson(retryCall.text || "", isFullMock);
     if (retryParse.success && retryParse.data) {
       return NextResponse.json(retryParse.data);
     }

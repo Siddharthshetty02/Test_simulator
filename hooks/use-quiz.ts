@@ -98,12 +98,27 @@ export function useQuiz(options?: UseQuizOptions) {
     let score = 0;
     const topicAccuracy: Record<string, { correct: number; total: number }> = {};
 
+    const FULL_MOCK_SECTIONS = [
+      "English & Verbal Ability",
+      "Git & Version Control",
+      "General Data Science",
+      "DS Fundamentals",
+      "Engineering & OOP",
+    ];
+
     questions.forEach((q, idx) => {
       const selected = userAnswers[idx];
       const isCorrect = selected === q.answerIndex;
       if (isCorrect) score += 1;
 
-      const topicKey = q.topic || sectionMetadata.sectionLabel;
+      let topicKey = q.topic || sectionMetadata.sectionLabel;
+      if (
+        sectionMetadata.section === "full_mock" &&
+        (topicKey.toLowerCase().includes("full mock") || questions.length === 25)
+      ) {
+        topicKey = FULL_MOCK_SECTIONS[Math.floor(idx / 5)] || topicKey;
+      }
+
       if (!topicAccuracy[topicKey]) {
         topicAccuracy[topicKey] = { correct: 0, total: 0 };
       }
