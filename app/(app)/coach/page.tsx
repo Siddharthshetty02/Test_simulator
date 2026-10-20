@@ -10,6 +10,7 @@ import { CopyButton } from "@/components/chat/copy-button";
 import { TypingIndicator } from "@/components/chat/typing-indicator";
 import ReactMarkdown from "react-markdown";
 import { storage, CoachSession } from "@/lib/storage";
+import { cleanModelOutput } from "@/lib/utils";
 import { TARGET_COMPANY } from "@/lib/constants";
 import {
   MessageSquareCheck,
@@ -82,20 +83,22 @@ export function CoachPage() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let accumulated = "";
+      let lineBuffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
+        lineBuffer += decoder.decode(value, { stream: true });
+        const lines = lineBuffer.split("\n");
+        lineBuffer = lines.pop() ?? "";
 
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed || trimmed.startsWith(":")) continue;
 
           if (trimmed.startsWith("data: ")) {
-            const dataStr = trimmed.slice(6);
+            const dataStr = trimmed.slice(6).trim();
             if (dataStr === "[DONE]") continue;
 
             try {
@@ -105,16 +108,37 @@ export function CoachPage() {
                 parsed.choices?.[0]?.text ||
                 parsed.content ||
                 "";
-              accumulated += delta;
+              if (typeof delta === "string" && delta.length > 0) {
+                accumulated += delta;
+              }
             } catch {
-              accumulated += dataStr;
+              // Ignore incomplete data
             }
-          } else {
-            accumulated += line;
           }
-          setFeedback(accumulated);
+        }
+        setFeedback(cleanModelOutput(accumulated));
+      }
+
+      if (lineBuffer.trim().startsWith("data: ")) {
+        const dataStr = lineBuffer.trim().slice(6).trim();
+        if (dataStr !== "[DONE]") {
+          try {
+            const parsed = JSON.parse(dataStr);
+            const delta =
+              parsed.choices?.[0]?.delta?.content ||
+              parsed.choices?.[0]?.text ||
+              "";
+            if (typeof delta === "string" && delta.length > 0) {
+              accumulated += delta;
+            }
+          } catch {
+            // ignore
+          }
         }
       }
+
+      const finalFeedback = cleanModelOutput(accumulated);
+      setFeedback(finalFeedback);
 
       // Save to storage
       const session: CoachSession = {
@@ -122,7 +146,7 @@ export function CoachPage() {
         timestamp: new Date().toISOString(),
         question: question.trim(),
         userAnswer: answer.trim(),
-        feedback: accumulated,
+        feedback: finalFeedback,
       };
       storage.saveCoachSession(session);
     } catch (err: unknown) {

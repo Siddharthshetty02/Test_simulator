@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { QuizRequestSchema, QuizResponseSchema, QuizQuestion } from "@/lib/schemas";
+import { QuizRequestSchema, QuizQuestion } from "@/lib/schemas";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { buildQuizSystemPrompt } from "@/lib/prompts";
-import { chat, stripCodeFences } from "@/lib/openrouter";
-
+import { chat } from "@/lib/openrouter";
+import { extractJson } from "@/lib/utils";
 
 const SECTION_TOPIC_MAP: Record<string, string> = {
   english: "English & Verbal Ability (Technical comprehension, vocabulary, grammar for engineers)",
@@ -14,15 +14,79 @@ const SECTION_TOPIC_MAP: Record<string, string> = {
   full_mock: "Full Mock Assessment (balanced across English, Git, General DS, DS Fundamentals, and Engineering)",
 };
 
+function normalizeQuestions(rawList: unknown[]): QuizQuestion[] {
+  return rawList
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map((item, idx) => {
+      let answerIdx = 0;
+      const rawAns = item.answerIndex ?? item.correctIndex ?? item.answer ?? item.correct_answer;
+      if (typeof rawAns === "number") {
+        answerIdx = Math.max(0, Math.min(3, Math.round(rawAns)));
+      } else if (typeof rawAns === "string") {
+        const trimmed = rawAns.trim().toUpperCase();
+        if (trimmed === "A" || trimmed.startsWith("OPTION A") || trimmed === "0") answerIdx = 0;
+        else if (trimmed === "B" || trimmed.startsWith("OPTION B") || trimmed === "1") answerIdx = 1;
+        else if (trimmed === "C" || trimmed.startsWith("OPTION C") || trimmed === "2") answerIdx = 2;
+        else if (trimmed === "D" || trimmed.startsWith("OPTION D") || trimmed === "3") answerIdx = 3;
+        else {
+          const parsed = parseInt(trimmed, 10);
+          if (!isNaN(parsed) && parsed >= 0 && parsed <= 3) answerIdx = parsed;
+        }
+      }
+
+      let options: string[] = [];
+      if (Array.isArray(item.options)) {
+        options = item.options.map((opt) => String(opt ?? "").trim()).filter(Boolean);
+      } else if (item.options && typeof item.options === "object") {
+        options = Object.values(item.options as Record<string, unknown>).map((opt) =>
+          String(opt ?? "").trim()
+        );
+      }
+
+      // Guarantee exactly 4 options
+      while (options.length < 4) {
+        options.push(`Option ${options.length + 1}`);
+      }
+      if (options.length > 4) {
+        options = options.slice(0, 4);
+      }
+
+      return {
+        id: typeof item.id === "number" ? item.id : idx + 1,
+        topic: String(item.topic || "Data Science").trim(),
+        question: String(item.question || `Practice question ${idx + 1}`).trim(),
+        options,
+        answerIndex: answerIdx,
+        explanation: String(item.explanation || "Correct option selected based on standard data science principles.").trim(),
+      };
+    });
+}
+
 function tryParseQuizJson(raw: string): { success: boolean; data?: { questions: QuizQuestion[] }; error?: string } {
   try {
-    const cleaned = stripCodeFences(raw);
-    const parsed = JSON.parse(cleaned);
-    const validated = QuizResponseSchema.safeParse(parsed);
-    if (validated.success) {
-      return { success: true, data: validated.data };
+    const parsed = extractJson(raw);
+    let rawQuestions: unknown[] = [];
+
+    if (Array.isArray(parsed)) {
+      rawQuestions = parsed;
+    } else if (parsed && typeof parsed === "object") {
+      const obj = parsed as Record<string, unknown>;
+      if (Array.isArray(obj.questions)) rawQuestions = obj.questions;
+      else if (Array.isArray(obj.data)) rawQuestions = obj.data;
+      else if (Array.isArray(obj.quiz)) rawQuestions = obj.quiz;
+      else if (Array.isArray(obj.items)) rawQuestions = obj.items;
     }
-    return { success: false, error: validated.error.message };
+
+    if (!rawQuestions || !rawQuestions.length) {
+      return { success: false, error: "No question array found in response" };
+    }
+
+    const normalized = normalizeQuestions(rawQuestions);
+    if (!normalized.length) {
+      return { success: false, error: "Questions could not be parsed into valid items" };
+    }
+
+    return { success: true, data: { questions: normalized } };
   } catch (err) {
     return { success: false, error: (err as Error).message };
   }
@@ -64,16 +128,19 @@ export async function POST(req: NextRequest) {
       { role: "system" as const, content: systemPrompt },
       {
         role: "user" as const,
-        content: `Generate ${count} questions now for topic: ${topicDescription} at ${difficulty} level. Return raw JSON only.`,
+        content: `Generate ${count} questions now for topic: ${topicDescription} at ${difficulty} level. Return raw JSON only matching the schema.`,
       },
     ];
+
+    // Allocate sufficient tokens: 25 questions require ~4000-4800 tokens to avoid truncation
+    const maxTokens = count === 25 ? 4800 : Math.min(3800, count * 170 + 600);
 
     // First attempt
     const firstCall = await chat({
       messages,
       stream: false,
-      maxTokens: 2500,
-      temperature: 0.5,
+      maxTokens,
+      temperature: 0.4,
     });
 
     const firstParse = tryParseQuizJson(firstCall.text || "");
@@ -95,7 +162,7 @@ export async function POST(req: NextRequest) {
     const retryCall = await chat({
       messages: repairMessages,
       stream: false,
-      maxTokens: 2500,
+      maxTokens,
       temperature: 0.2,
     });
 
@@ -116,3 +183,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+

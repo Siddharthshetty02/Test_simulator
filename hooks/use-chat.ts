@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { cleanModelOutput } from "@/lib/utils";
 
 export interface ChatMessageItem {
   id: string;
@@ -100,50 +101,76 @@ export function useChat({
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let accumulatedText = "";
+        let lineBuffer = "";
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
+          lineBuffer += decoder.decode(value, { stream: true });
+          const lines = lineBuffer.split("\n");
+          lineBuffer = lines.pop() ?? ""; // keep incomplete line for next iteration
 
           for (const line of lines) {
             const trimmed = line.trim();
             if (!trimmed || trimmed.startsWith(":")) continue;
 
             if (trimmed.startsWith("data: ")) {
-              const dataStr = trimmed.slice(6);
+              const dataStr = trimmed.slice(6).trim();
               if (dataStr === "[DONE]") continue;
 
               try {
                 const parsed = JSON.parse(dataStr);
                 const delta =
-                  parsed.choices?.[0]?.delta?.content ||
-                  parsed.choices?.[0]?.text ||
-                  parsed.content ||
+                  parsed.choices?.[0]?.delta?.content ??
+                  parsed.choices?.[0]?.text ??
                   "";
-                accumulatedText += delta;
+                if (typeof delta === "string" && delta.length > 0) {
+                  accumulatedText += delta;
+                }
               } catch {
-                // If it's plain text in data stream
-                accumulatedText += dataStr;
+                // Ignore incomplete or non-JSON data lines
               }
-            } else {
-              // Direct text streaming fallback
-              accumulatedText += line;
             }
+          }
 
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantId ? { ...msg, content: accumulatedText } : msg
-              )
-            );
+          const sanitized = cleanModelOutput(accumulatedText);
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantId ? { ...msg, content: sanitized } : msg
+            )
+          );
+        }
+
+        // Process any remainder in lineBuffer
+        if (lineBuffer.trim().startsWith("data: ")) {
+          const dataStr = lineBuffer.trim().slice(6).trim();
+          if (dataStr !== "[DONE]") {
+            try {
+              const parsed = JSON.parse(dataStr);
+              const delta =
+                parsed.choices?.[0]?.delta?.content ??
+                parsed.choices?.[0]?.text ??
+                "";
+              if (typeof delta === "string" && delta.length > 0) {
+                accumulatedText += delta;
+              }
+            } catch {
+              // ignore
+            }
           }
         }
 
+        const finalSanitized = cleanModelOutput(accumulatedText);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantId ? { ...msg, content: finalSanitized } : msg
+          )
+        );
+
         const finalMessages = [
           ...updatedHistory,
-          { ...assistantPlaceholder, content: accumulatedText },
+          { ...assistantPlaceholder, content: finalSanitized },
         ];
         onFinish?.(finalMessages);
       } catch (err: unknown) {

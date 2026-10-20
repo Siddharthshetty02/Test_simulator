@@ -360,17 +360,32 @@ export default function QuizPage() {
                     </button>
                   </div>
 
-                  <div className="pt-2">
+                  {genError && (
+                    <div className="p-3 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/40 dark:border-red-900/60 text-red-800 dark:text-red-200 text-xs flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                      <span className="leading-relaxed">{genError}</span>
+                    </div>
+                  )}
+
+                  <div className="pt-2 space-y-2">
                     <Button
                       onClick={handleStartGeneration}
                       isLoading={isGenerating}
+                      disabled={isGenerating}
                       variant="primary"
                       size="lg"
                       className="w-full font-semibold shadow-md"
                     >
                       <Sparkles className="w-4 h-4 mr-2" />
-                      Generate & Start Test
+                      {isGenerating ? "Generating Assessment..." : "Generate & Start Test"}
                     </Button>
+                    {isGenerating && (
+                      <p className="text-[11px] text-center text-slate-500 dark:text-slate-400 animate-pulse">
+                        {isFullMock
+                          ? "Generating 25 balanced MCQs across all 5 sections... (~20s)"
+                          : `Generating ${questionCount} MCQs... (~10s)`}
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>

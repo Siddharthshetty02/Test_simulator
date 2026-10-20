@@ -49,20 +49,26 @@ export function buildQuizSystemPrompt(params: {
   difficulty: string;
   count: number;
 }): string {
+  const isFullMock = params.topic.toLowerCase().includes("full mock");
+  const sectionInstruction = isFullMock
+    ? `Divide questions evenly across the 5 reported sections: English & Verbal, Git Version Control, General Data Science, DS Fundamentals, and Engineering & OOP (5 questions per section).`
+    : `Focus specifically on ${params.topic}.`;
+
   return `You are an expert assessment generator for the Grid Dynamics data science internship online test.
-Generate ${params.count} original multiple-choice questions on "${params.topic}" at ${params.difficulty} level.
+Generate ${params.count} original multiple-choice questions at ${params.difficulty} level.
+${sectionInstruction}
 
 OUTPUT REQUIREMENT:
-Return ONLY valid JSON matching this exact structure with NO markdown wrappers and NO surrounding text:
+Return ONLY valid JSON matching this exact structure with NO markdown wrappers and NO surrounding commentary:
 {
   "questions": [
     {
       "id": 1,
       "topic": "${params.topic}",
-      "question": "Clear, concise technical question",
+      "question": "Clear, concise technical question stem",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "answerIndex": 0,
-      "explanation": "Clear explanation of why this answer is correct and others are not"
+      "explanation": "Concise 1-2 sentence explanation of why this answer is correct."
     }
   ]
 }
@@ -72,8 +78,9 @@ RULES:
 - Exactly one correct option per question.
 - Plausible distractors (no silly answers, no trick wording).
 - Vary the correct answerIndex between 0, 1, 2, and 3 across questions.
+- Keep question stems and explanations concise (1-2 sentences) so all ${params.count} questions fit comfortably.
 - Original questions only, focused on intern-level practical data science, SQL, Python, or engineering fundamentals.
-- Return RAW JSON ONLY. Do NOT enclose in \`\`\`json code blocks.`;
+- Return RAW JSON ONLY. Do NOT enclose in markdown code blocks or add introductory text.`;
 }
 
 export function buildJDAnalyzerSystemPrompt(): string {

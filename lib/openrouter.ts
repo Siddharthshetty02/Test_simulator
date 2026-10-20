@@ -13,7 +13,7 @@ export interface ChatOptions {
 }
 
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_TIMEOUT_MS = 30000;
+const DEFAULT_TIMEOUT_MS = 75000;
 
 export function stripCodeFences(raw: string): string {
   let cleaned = raw.trim();
@@ -121,7 +121,7 @@ export async function chat(options: ChatOptions): Promise<{
     } catch (err: unknown) {
       clearTimeout(timer);
       if (err instanceof Error && err.name === "AbortError") {
-        throw new Error("Request to OpenRouter timed out after 30 seconds. Please try again.");
+        throw new Error(`Request to OpenRouter timed out after ${Math.round(DEFAULT_TIMEOUT_MS / 1000)} seconds. Please try again.`);
       }
       throw err;
     }
