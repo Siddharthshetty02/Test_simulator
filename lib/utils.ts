@@ -59,8 +59,37 @@ export function cleanModelOutput(raw: string): string {
   cleaned = cleaned.replace(/^data:\s*\{.*$/gim, "");
   cleaned = cleaned.replace(/^:.*$/gim, "");
 
-  return cleaned;
+  // 4. Format joined interview evaluation items into clean, readable bullet points
+  cleaned = formatPointwiseResponse(cleaned);
+
+  return cleaned.trim();
 }
+
+/**
+ * Ensures evaluation feedback (Score, What was good, What was missing, Model answer, Next Question)
+ * always follows a crisp, readable point-wise bullet structure with clean spacing.
+ */
+export function formatPointwiseResponse(raw: string): string {
+  if (!raw) return "";
+
+  let formatted = raw;
+
+  // Check if evaluation headers are present
+  const hasEvaluationSections =
+    /(?:What was good|What was missing|Model answer|Next Question):/i.test(formatted);
+
+  if (hasEvaluationSections) {
+    formatted = formatted
+      .replace(/(?:^|\n|\s)(?:-|\*)?\s*(?:\*\*)?Score(?:\*\*)?:\s*(\(?\d+\s*\/\s*\d+\)?)/gi, "\n\n- **Score**: $1")
+      .replace(/(?:^|\n|\s)(?:-|\*)?\s*(?:\*\*)?What was good(?:\*\*)?:\s*/gi, "\n\n- **What was good**: ")
+      .replace(/(?:^|\n|\s)(?:-|\*)?\s*(?:\*\*)?What was missing(?:\*\*)?:\s*/gi, "\n\n- **What was missing**: ")
+      .replace(/(?:^|\n|\s)(?:-|\*)?\s*(?:\*\*)?Model answer(?:\*\*)?:\s*/gi, "\n\n- **Model answer**: ")
+      .replace(/(?:^|\n|\s)(?:-|\*)?\s*(?:\*\*)?Next Question(?:\*\*)?:\s*/gi, "\n\n- **Next Question**: ");
+  }
+
+  return formatted;
+}
+
 
 /**
  * Robustly extracts and parses JSON from LLM output, handling markdown code fences,

@@ -36,6 +36,17 @@ describe("JSON & Parser Utilities", () => {
     expect(cleaned).not.toContain("chat.completion.chunk");
   });
 
+  it("formats unformatted single-paragraph evaluation into crisp point-wise bullet items", () => {
+    const rawRunOn =
+      "Score: 0/10 What was good: None, the response was unrelated. What was missing: Understanding of Pandas. Model answer: Pandas is for data manipulation. Next Question: What is import pandas as pd?";
+    const formatted = cleanModelOutput(rawRunOn);
+    expect(formatted).toContain("- **Score**: 0/10");
+    expect(formatted).toContain("- **What was good**: None");
+    expect(formatted).toContain("- **What was missing**: Understanding");
+    expect(formatted).toContain("- **Model answer**: Pandas");
+    expect(formatted).toContain("- **Next Question**: What is");
+  });
+
   it("extracts JSON even with surrounding commentary", () => {
     const rawWithCommentary = `Here are your questions:\n\`\`\`json\n{"questions": [{"id": 1, "question": "What is overfitting?"}]}\n\`\`\`\nHope this helps!`;
     const parsed = extractJson(rawWithCommentary) as { questions: { id: number; question: string }[] };
