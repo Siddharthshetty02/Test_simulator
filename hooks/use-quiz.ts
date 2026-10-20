@@ -19,6 +19,7 @@ export function useQuiz(options?: UseQuizOptions) {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [totalDuration, setTotalDuration] = useState<number>(0);
   const [timerEnabled, setTimerEnabled] = useState<boolean>(true);
+  const [latestAttempt, setLatestAttempt] = useState<QuizAttempt | null>(null);
   const [sectionMetadata, setSectionMetadata] = useState<{
     section: string;
     sectionLabel: string;
@@ -67,6 +68,7 @@ export function useQuiz(options?: UseQuizOptions) {
     setTotalDuration(durationSeconds);
     setTimerEnabled(hasTimer);
     setSectionMetadata(meta);
+    setLatestAttempt(null);
     setStatus("active");
   };
 
@@ -91,7 +93,6 @@ export function useQuiz(options?: UseQuizOptions) {
 
   const finishQuiz = useCallback((): QuizAttempt => {
     if (timerRef.current) clearInterval(timerRef.current);
-    setStatus("results");
 
     // Calculate accuracy
     let score = 0;
@@ -131,12 +132,15 @@ export function useQuiz(options?: UseQuizOptions) {
     };
 
     storage.saveQuizAttempt(attempt);
+    setLatestAttempt(attempt);
+    setStatus("results");
     return attempt;
   }, [questions, userAnswers, sectionMetadata, timerEnabled, totalDuration, timeLeft]);
 
   const resetQuiz = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     setStatus("idle");
+    setLatestAttempt(null);
     setQuestions([]);
     setUserAnswers({});
     setMarkedForReview(new Set());
@@ -155,6 +159,7 @@ export function useQuiz(options?: UseQuizOptions) {
     totalDuration,
     timerEnabled,
     sectionMetadata,
+    latestAttempt,
     startQuiz,
     selectAnswer,
     toggleMarkForReview,

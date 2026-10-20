@@ -45,6 +45,7 @@ export default function QuizPage() {
     markedForReview,
     timeLeft,
     sectionMetadata,
+    latestAttempt,
     startQuiz,
     selectAnswer,
     toggleMarkForReview,
@@ -154,30 +155,40 @@ export default function QuizPage() {
           )}
         </div>
 
-        {/* View 1: Reviewing an attempt from history */}
-        {reviewAttempt && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setReviewAttempt(null)}
-              >
-                ← Back to Tests
-              </Button>
+        {/* View 1: Quiz Results (either fresh completion or review from history) */}
+        {(() => {
+          const activeAttempt = reviewAttempt || latestAttempt;
+          if (!activeAttempt) return null;
+
+          return (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setReviewAttempt(null);
+                    resetQuiz();
+                    setActiveTab("take");
+                  }}
+                >
+                  ← Back to Tests
+                </Button>
+              </div>
+              <QuizResults
+                attempt={activeAttempt}
+                onRetake={() => {
+                  setReviewAttempt(null);
+                  resetQuiz();
+                  setActiveTab("take");
+                }}
+              />
             </div>
-            <QuizResults
-              attempt={reviewAttempt}
-              onRetake={() => {
-                setReviewAttempt(null);
-                setActiveTab("take");
-              }}
-            />
-          </div>
-        )}
+          );
+        })()}
 
         {/* View 2: Active Test in Progress */}
-        {!reviewAttempt && status === "active" && (
+        {!reviewAttempt && !latestAttempt && status === "active" && (
           <QuizPlayer
             questions={questions}
             currentIndex={currentIndex}
@@ -190,30 +201,12 @@ export default function QuizPage() {
             onSelectAnswer={selectAnswer}
             onToggleReview={toggleMarkForReview}
             onSubmit={() => {
-              if (
-                confirm(
-                  `Ready to submit? You have answered ${
-                    Object.keys(userAnswers).length
-                  } of ${questions.length} questions.`
-                )
-              ) {
-                const finished = finishQuiz();
-                setReviewAttempt(finished);
-              }
+              const finished = finishQuiz();
+              setReviewAttempt(finished);
             }}
           />
         )}
 
-        {/* View 3: Quiz Results right after finishing */}
-        {!reviewAttempt && status === "results" && (
-          <div className="text-center py-6">
-            <p className="text-sm text-slate-500 mb-4">Quiz successfully submitted!</p>
-            <Button onClick={resetQuiz} variant="primary">
-              <RotateCcw className="w-4 h-4 mr-1.5" />
-              Take Another Quiz
-            </Button>
-          </div>
-        )}
 
         {/* View 4: Setup & Configuration Form */}
         {!reviewAttempt && status === "idle" && activeTab === "take" && (
