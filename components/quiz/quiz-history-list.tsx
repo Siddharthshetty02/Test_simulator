@@ -17,11 +17,16 @@ export function QuizHistoryList({ onReviewAttempt }: QuizHistoryListProps) {
 
   useEffect(() => {
     setHistory(storage.getQuizHistory());
+    storage.syncWithDB().then((dbData) => {
+      if (dbData?.quizzes) {
+        setHistory(dbData.quizzes);
+      }
+    });
   }, []);
 
   const handleClearHistory = () => {
     if (confirm("Clear your quiz history?")) {
-      localStorage.removeItem("ds_hub_quiz_history");
+      storage.clearQuizHistory();
       setHistory([]);
     }
   };

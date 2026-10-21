@@ -25,10 +25,13 @@ export const QuizRequestSchema = z.object({
     "ds_fundamentals",
     "engineering",
     "full_mock",
+    "infinite_practice",
   ]),
   difficulty: z.enum(["beginner", "intermediate"]),
   count: z.number().int().min(5).max(25),
   timerEnabled: z.boolean().default(true),
+  weakTopics: z.array(z.string()).optional(),
+  customFocus: z.string().max(200).optional(),
 });
 
 export type QuizRequest = z.infer<typeof QuizRequestSchema>;
