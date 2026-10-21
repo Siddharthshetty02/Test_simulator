@@ -33,14 +33,13 @@ export default function DashboardPage() {
     recentSessions: [] as UnifiedSession[],
   });
 
-  useEffect(() => {
-    setMounted(true);
-    const quizzes = storage.getQuizHistory();
-    const interviews = storage.getInterviewSessions();
-    const coaches = storage.getCoachSessions();
-    const streak = storage.calculateStreak();
-    const practiceDates = storage.getPracticeDates();
-
+  const updateDashboardStats = (
+    quizzes = storage.getQuizHistory(),
+    interviews = storage.getInterviewSessions(),
+    coaches = storage.getCoachSessions(),
+    streak = storage.calculateStreak(),
+    practiceDates = storage.getPracticeDates()
+  ) => {
     // Average score calculation
     let avg = 0;
     if (quizzes.length > 0) {
@@ -108,6 +107,25 @@ export default function DashboardPage() {
       practiceDates,
       topicStats,
       recentSessions: unified,
+    });
+  };
+
+  useEffect(() => {
+    setMounted(true);
+    // Instant render from local cache
+    updateDashboardStats();
+
+    // Bi-directional sync with SQLite database
+    storage.syncWithDB().then((dbData) => {
+      if (dbData) {
+        updateDashboardStats(
+          dbData.quizzes,
+          dbData.interviews,
+          dbData.coachSessions,
+          storage.calculateStreak(),
+          dbData.practiceDates
+        );
+      }
     });
   }, []);
 

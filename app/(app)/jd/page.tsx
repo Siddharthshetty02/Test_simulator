@@ -20,7 +20,9 @@ import {
   AlertCircle,
   RotateCcw,
   BookOpen,
+  FileDown,
 } from "lucide-react";
+import { exportStudyPlanPDF } from "@/lib/pdf-export";
 
 const SAMPLE_JD = `Job Title: Data Science Intern
 Company: Grid Dynamics
@@ -316,13 +318,33 @@ export default function JDAnalyzerPage() {
             {/* 3. 7-Day Study Plan */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-[#2563EB]" />
-                  7-Day Structured Study Plan
-                </CardTitle>
-                <CardDescription>
-                  Day-by-day roadmap leading up to the Grid Dynamics assessment.
-                </CardDescription>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-[#2563EB]" />
+                      7-Day Structured Study Plan
+                    </CardTitle>
+                    <CardDescription>
+                      Day-by-day roadmap leading up to the Grid Dynamics assessment.
+                    </CardDescription>
+                  </div>
+                  <Button
+                    onClick={() =>
+                      exportStudyPlanPDF({
+                        role: analysis.role_overview || "Data Science Intern",
+                        studyPlan: analysis.study_plan_7_days,
+                        priorityTopics: analysis.priority_topics,
+                        requiredSkills: analysis.required_skills,
+                      })
+                    }
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs gap-1.5 border-slate-200 dark:border-slate-800 self-start sm:self-auto"
+                  >
+                    <FileDown className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    Export PDF Plan
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

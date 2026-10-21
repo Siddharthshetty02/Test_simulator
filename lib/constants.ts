@@ -27,6 +27,7 @@ export const DIFFICULTY_LEVELS = [
 
 export const QUIZ_SECTIONS = [
   { id: "full_mock", label: "Full Mock Test (25 Qs - 30 mins)", desc: "All 5 reported sections balanced", count: 25, duration: 1800 },
+  { id: "infinite_practice", label: "AI Targeted Drill (Infinite)", desc: "Fresh AI-generated questions tailored to your weakest areas", count: 10, duration: 600 },
   { id: "ds_fundamentals", label: "DS Fundamentals", desc: "Supervised/unsupervised ML, evaluation metrics, overfitting", count: 10, duration: 600 },
   { id: "general_ds", label: "General Data Science", desc: "Data cleaning, feature engineering, EDA, statistics", count: 10, duration: 600 },
   { id: "engineering", label: "Engineering & OOP", desc: "Python OOP, data structures, complexity, clean code", count: 10, duration: 600 },

@@ -21,7 +21,9 @@ import {
   Square,
   Send,
   HelpCircle,
+  FileDown,
 } from "lucide-react";
+import { exportSTARAnswerPDF } from "@/lib/pdf-export";
 
 const SAMPLE_QUESTION = "Tell me about a challenging data science or machine learning project you built and how you evaluated its success.";
 
@@ -305,7 +307,26 @@ export function CoachPage() {
                     Feedback & STAR Check
                   </h3>
                 </div>
-                {feedback && <CopyButton text={feedback} />}
+                {feedback && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() =>
+                        exportSTARAnswerPDF({
+                          question,
+                          userAnswer: answer,
+                          feedback,
+                        })
+                      }
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5 border-slate-200 dark:border-slate-800"
+                    >
+                      <FileDown className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      Export PDF
+                    </Button>
+                    <CopyButton text={feedback} />
+                  </div>
+                )}
               </div>
 
               {isStreaming && !feedback && (

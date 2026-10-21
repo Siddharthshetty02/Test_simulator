@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { QuizPlayer } from "@/components/quiz/quiz-player";
 import { QuizResults } from "@/components/quiz/quiz-results";
 import { QuizHistoryList } from "@/components/quiz/quiz-history-list";
 import { useQuiz } from "@/hooks/use-quiz";
-import { QuizAttempt } from "@/lib/storage";
+import { storage, QuizAttempt } from "@/lib/storage";
 import {
   QUIZ_SECTIONS,
   DEFAULT_QUIZ_COUNTS,
@@ -24,6 +24,8 @@ import {
   History,
   Play,
   RotateCcw,
+  Zap,
+  Target,
 } from "lucide-react";
 
 export default function QuizPage() {
@@ -35,6 +37,24 @@ export default function QuizPage() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [genError, setGenError] = useState<string | null>(null);
   const [reviewAttempt, setReviewAttempt] = useState<QuizAttempt | null>(null);
+  const [weakTopics, setWeakTopics] = useState<string[]>([]);
+  const [customFocus, setCustomFocus] = useState<string>("");
+
+  useEffect(() => {
+    const history = storage.getQuizHistory();
+    const totals: Record<string, { correct: number; total: number }> = {};
+    history.forEach((attempt) => {
+      Object.entries(attempt.topicAccuracy || {}).forEach(([top, stat]) => {
+        if (!totals[top]) totals[top] = { correct: 0, total: 0 };
+        totals[top].correct += stat.correct;
+        totals[top].total += stat.total;
+      });
+    });
+    const detected = Object.entries(totals)
+      .filter(([_, stat]) => stat.total >= 2 && stat.correct / stat.total < 0.7)
+      .map(([top]) => top);
+    setWeakTopics(detected);
+  }, []);
 
   const {
     status,
@@ -73,6 +93,11 @@ export default function QuizPage() {
           difficulty,
           count: actualCount,
           timerEnabled,
+          weakTopics: section === "infinite_practice" ? weakTopics : undefined,
+          customFocus:
+            section === "infinite_practice" && customFocus.trim()
+              ? customFocus.trim()
+              : undefined,
         }),
       });
 
@@ -212,6 +237,31 @@ export default function QuizPage() {
         {!reviewAttempt && status === "idle" && activeTab === "take" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
+              {/* Weak Topics Quick-Launch Banner */}
+              {weakTopics.length > 0 && section !== "infinite_practice" && (
+                <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      <strong>Weak Area Detected:</strong> Lower accuracy in{" "}
+                      <span className="font-semibold underline">
+                        {weakTopics.slice(0, 3).join(", ")}
+                      </span>
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSection("infinite_practice")}
+                    className="h-7 text-xs border-amber-300 bg-white/80 dark:bg-slate-900 self-start sm:self-auto"
+                  >
+                    <Zap className="w-3.5 h-3.5 mr-1 text-amber-600" />
+                    Drill Weak Areas Now
+                  </Button>
+                </div>
+              )}
+
               {/* Section selection */}
               <Card>
                 <CardHeader className="pb-3">
@@ -222,49 +272,104 @@ export default function QuizPage() {
                     Select Assessment Section
                   </CardTitle>
                   <CardDescription>
-                    Choose a single drill topic or simulate the comprehensive 5-section test.
+                    Choose a single drill topic, the full 5-section mock, or AI adaptive practice.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {QUIZ_SECTIONS.map((sec) => {
                     const isSelected = section === sec.id;
                     const isMock = sec.id === "full_mock";
+                    const isInfinite = sec.id === "infinite_practice";
                     return (
-                      <button
-                        key={sec.id}
-                        type="button"
-                        onClick={() => setSection(sec.id)}
-                        className={`w-full text-left p-4 rounded-xl border transition-all duration-200 flex items-start justify-between gap-4 cursor-pointer hover:border-blue-500 dark:hover:border-blue-400 ${
-                          isSelected
-                            ? "border-[#2563EB] bg-blue-50/70 dark:bg-blue-950/40 ring-1 ring-[#2563EB]"
-                            : "border-slate-200 dark:border-slate-800 bg-transparent"
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm text-slate-900 dark:text-white">
-                              {sec.label}
-                            </span>
-                            {isMock && (
-                              <Badge variant="accent" className="text-[10px]">
-                                Recommended
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            {sec.desc}
-                          </p>
-                        </div>
-                        <span
-                          className={`w-4 h-4 rounded-full border shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
+                      <div key={sec.id} className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => setSection(sec.id)}
+                          className={`w-full text-left p-4 rounded-xl border transition-all duration-200 flex items-start justify-between gap-4 cursor-pointer hover:border-blue-500 dark:hover:border-blue-400 ${
                             isSelected
-                              ? "border-[#2563EB] bg-[#2563EB]"
-                              : "border-slate-300 dark:border-slate-600"
+                              ? "border-[#2563EB] bg-blue-50/70 dark:bg-blue-950/40 ring-1 ring-[#2563EB]"
+                              : "border-slate-200 dark:border-slate-800 bg-transparent"
                           }`}
                         >
-                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
-                        </span>
-                      </button>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm text-slate-900 dark:text-white">
+                                {sec.label}
+                              </span>
+                              {isMock && (
+                                <Badge variant="accent" className="text-[10px]">
+                                  Standard Format
+                                </Badge>
+                              )}
+                              {isInfinite && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border-purple-300"
+                                >
+                                  ✨ AI Adaptive
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              {sec.desc}
+                            </p>
+                          </div>
+                          <span
+                            className={`w-4 h-4 rounded-full border shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
+                              isSelected
+                                ? "border-[#2563EB] bg-[#2563EB]"
+                                : "border-slate-300 dark:border-slate-600"
+                            }`}
+                          >
+                            {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </span>
+                        </button>
+
+                        {/* Inline Adaptive Settings when Infinite Practice is selected */}
+                        {isInfinite && isSelected && (
+                          <div className="p-4 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 space-y-3 text-xs">
+                            <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200 font-medium">
+                              <Sparkles className="w-4 h-4 text-blue-600" />
+                              <span>Dynamic Question Bank Configuration</span>
+                            </div>
+
+                            {weakTopics.length > 0 ? (
+                              <div>
+                                <p className="text-slate-500 dark:text-slate-400 text-[11px] mb-1.5">
+                                  Identified weak topics to drill:
+                                </p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {weakTopics.map((top, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="px-2.5 py-1 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 text-[11px] font-medium border border-amber-300"
+                                    >
+                                      🎯 {top}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-slate-500 dark:text-slate-400 text-[11px]">
+                                No past diagnostic weak points recorded yet. The AI will synthesize questions across top Grid Dynamics assessment concepts!
+                              </p>
+                            )}
+
+                            <div>
+                              <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1">
+                                Optional: Focus on specific topics or algorithms
+                              </label>
+                              <input
+                                type="text"
+                                value={customFocus}
+                                onChange={(e) => setCustomFocus(e.target.value)}
+                                placeholder="e.g. XGBoost tuning, SQL window functions, Pandas multi-index, Git rebase"
+                                className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </CardContent>

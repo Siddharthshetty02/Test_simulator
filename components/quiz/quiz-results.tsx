@@ -14,8 +14,10 @@ import {
   Award,
   ChevronDown,
   ChevronUp,
+  FileDown,
 } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
+import { exportQuizScorecardPDF } from "@/lib/pdf-export";
 import Link from "next/link";
 
 interface QuizResultsProps {
@@ -114,6 +116,15 @@ export function QuizResults({ attempt, onRetake }: QuizResultsProps) {
           <Button onClick={onRetake} variant="primary" size="md">
             <RotateCcw className="w-4 h-4 mr-1.5" />
             Take Another Quiz
+          </Button>
+          <Button
+            onClick={() => exportQuizScorecardPDF(attempt)}
+            variant="outline"
+            size="md"
+            className="border-slate-300 dark:border-slate-700"
+          >
+            <FileDown className="w-4 h-4 mr-1.5 text-blue-600 dark:text-blue-400" />
+            Export PDF Scorecard
           </Button>
           <Link href="/dashboard">
             <Button variant="outline" size="md">

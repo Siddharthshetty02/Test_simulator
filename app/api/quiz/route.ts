@@ -12,6 +12,7 @@ const SECTION_TOPIC_MAP: Record<string, string> = {
   ds_fundamentals: "Data Science Fundamentals (Supervised & Unsupervised ML, bias-variance, regularisation)",
   engineering: "Engineering & OOP (Python data structures, OOP principles, time/space complexity, clean code)",
   full_mock: "Full Mock Assessment (balanced across English, Git, General DS, DS Fundamentals, and Engineering)",
+  infinite_practice: "Targeted Weak Area & AI Drill (Adaptive technical assessment focused on candidate weakness)",
 };
 
 function normalizeQuestions(rawList: unknown[]): QuizQuestion[] {
@@ -127,20 +128,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { section, difficulty, count } = parseResult.data;
+    const { section, difficulty, count, weakTopics, customFocus } = parseResult.data;
     const topicDescription = SECTION_TOPIC_MAP[section] || section;
 
     const systemPrompt = buildQuizSystemPrompt({
       topic: topicDescription,
       difficulty,
       count,
+      weakTopics,
+      customFocus,
     });
+
+    const userPromptContent =
+      weakTopics && weakTopics.length > 0
+        ? `Generate ${count} questions now focusing specifically on candidate weak topics: ${weakTopics.join(
+            ", "
+          )} at ${difficulty} level. Return raw JSON only matching the schema.`
+        : customFocus
+        ? `Generate ${count} questions now for custom topic: ${customFocus} at ${difficulty} level. Return raw JSON only matching the schema.`
+        : `Generate ${count} questions now for topic: ${topicDescription} at ${difficulty} level. Return raw JSON only matching the schema.`;
 
     const messages = [
       { role: "system" as const, content: systemPrompt },
       {
         role: "user" as const,
-        content: `Generate ${count} questions now for topic: ${topicDescription} at ${difficulty} level. Return raw JSON only matching the schema.`,
+        content: userPromptContent,
       },
     ];
 

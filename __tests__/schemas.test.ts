@@ -43,6 +43,19 @@ describe("Validation Schemas", () => {
     expect(res.success).toBe(true);
   });
 
+  it("validates infinite_practice QuizRequest with weakTopics and customFocus", () => {
+    const valid = {
+      section: "infinite_practice",
+      difficulty: "beginner",
+      count: 10,
+      timerEnabled: true,
+      weakTopics: ["Git Version Control", "Data Science Fundamentals"],
+      customFocus: "ROC-AUC curve calculation",
+    };
+    const res = QuizRequestSchema.safeParse(valid);
+    expect(res.success).toBe(true);
+  });
+
   it("validates strictly shaped QuizResponseSchema", () => {
     const valid = {
       questions: [

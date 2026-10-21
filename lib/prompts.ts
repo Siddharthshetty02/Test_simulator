@@ -55,11 +55,23 @@ export function buildQuizSystemPrompt(params: {
   topic: string;
   difficulty: string;
   count: number;
+  weakTopics?: string[];
+  customFocus?: string;
 }): string {
   const isFullMock = params.topic.toLowerCase().includes("full mock");
-  const sectionInstruction = isFullMock
-    ? `Divide questions evenly across the 5 reported sections: English & Verbal, Git Version Control, General Data Science, DS Fundamentals, and Engineering & OOP (5 questions per section).`
-    : `Focus specifically on ${params.topic}.`;
+  let sectionInstruction = "";
+
+  if (params.weakTopics && params.weakTopics.length > 0) {
+    sectionInstruction = `DIAGNOSTIC TARGETING: The candidate has demonstrated low accuracy in: [${params.weakTopics.join(
+      ", "
+    )}]. Focus questions specifically on drilling these weak topics, probing common misconceptions, edge cases, and practical data science application.`;
+  } else if (params.customFocus) {
+    sectionInstruction = `CUSTOM FOCUS: The candidate requested practice specifically on: "${params.customFocus}". Design questions directly around these concepts.`;
+  } else if (isFullMock) {
+    sectionInstruction = `Divide questions evenly across the 5 reported sections: English & Verbal, Git Version Control, General Data Science, DS Fundamentals, and Engineering & OOP (5 questions per section).`;
+  } else {
+    sectionInstruction = `Focus specifically on ${params.topic}.`;
+  }
 
   return `You are an expert assessment generator for the Grid Dynamics data science internship online test.
 Generate ${params.count} original multiple-choice questions at ${params.difficulty} level.

@@ -54,6 +54,14 @@ export interface JDAnalysisSession {
   likelyQuestions: Array<{ question: string; topic: string }>;
 }
 
+export interface DBHistoryPayload {
+  quizzes: QuizAttempt[];
+  interviews: InterviewSession[];
+  coachSessions: CoachSession[];
+  jdAnalyses: JDAnalysisSession[];
+  practiceDates: string[];
+}
+
 const STORAGE_KEYS = {
   QUIZ_HISTORY: "ds_hub_quiz_history",
   INTERVIEW_SESSIONS: "ds_hub_interview_sessions",
@@ -82,6 +90,20 @@ function recordActivityToday(): void {
   }
 }
 
+// Background helper to persist to SQLite without blocking UI
+async function saveToDatabase(type: string, data: unknown) {
+  if (!isBrowser()) return;
+  try {
+    await fetch("/api/history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, data }),
+    });
+  } catch (e) {
+    console.warn(`[storage] Failed to save ${type} to SQLite database:`, e);
+  }
+}
+
 export const storage = {
   // Quizzes
   getQuizHistory(): QuizAttempt[] {
@@ -97,9 +119,10 @@ export const storage = {
     if (!isBrowser()) return;
     try {
       const current = storage.getQuizHistory();
-      const updated = [attempt, ...current].slice(0, 50); // keep last 50
+      const updated = [attempt, ...current].slice(0, 100);
       localStorage.setItem(STORAGE_KEYS.QUIZ_HISTORY, JSON.stringify(updated));
       recordActivityToday();
+      saveToDatabase("quiz", attempt);
     } catch (e) {
       console.warn("Failed to save quiz attempt", e);
     }
@@ -125,10 +148,11 @@ export const storage = {
         updated = [...current];
         updated[existingIdx] = session;
       } else {
-        updated = [session, ...current].slice(0, 30);
+        updated = [session, ...current].slice(0, 50);
       }
       localStorage.setItem(STORAGE_KEYS.INTERVIEW_SESSIONS, JSON.stringify(updated));
       recordActivityToday();
+      saveToDatabase("interview", session);
     } catch (e) {
       console.warn("Failed to save interview session", e);
     }
@@ -148,9 +172,10 @@ export const storage = {
     if (!isBrowser()) return;
     try {
       const current = storage.getCoachSessions();
-      const updated = [session, ...current].slice(0, 30);
+      const updated = [session, ...current].slice(0, 50);
       localStorage.setItem(STORAGE_KEYS.COACH_SESSIONS, JSON.stringify(updated));
       recordActivityToday();
+      saveToDatabase("coach", session);
     } catch (e) {
       console.warn("Failed to save coach session", e);
     }
@@ -170,9 +195,10 @@ export const storage = {
     if (!isBrowser()) return;
     try {
       const current = storage.getJDAnalyses();
-      const updated = [analysis, ...current].slice(0, 20);
+      const updated = [analysis, ...current].slice(0, 30);
       localStorage.setItem(STORAGE_KEYS.JD_ANALYSES, JSON.stringify(updated));
       recordActivityToday();
+      saveToDatabase("jd", analysis);
     } catch (e) {
       console.warn("Failed to save JD analysis", e);
     }
@@ -218,9 +244,78 @@ export const storage = {
     return { currentStreak: streak, totalDays: dateSet.size };
   },
 
+  // Bi-directional synchronization with SQLite database
+  async syncWithDB(): Promise<DBHistoryPayload | null> {
+    if (!isBrowser()) return null;
+    try {
+      // 1. Gather any local items to ensure nothing in current browser is lost
+      const localQuizzes = storage.getQuizHistory();
+      const localInterviews = storage.getInterviewSessions();
+      const localCoaches = storage.getCoachSessions();
+      const localJD = storage.getJDAnalyses();
+      const localDates = storage.getPracticeDates();
+
+      // Send local items to SQLite if any exist
+      if (
+        localQuizzes.length > 0 ||
+        localInterviews.length > 0 ||
+        localCoaches.length > 0 ||
+        localJD.length > 0
+      ) {
+        await fetch("/api/history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "sync",
+            syncData: {
+              quizzes: localQuizzes,
+              interviews: localInterviews,
+              coaches: localCoaches,
+              jdAnalyses: localJD,
+              practiceDates: localDates,
+            },
+          }),
+        });
+      }
+
+      // 2. Fetch full truth from SQLite database
+      const res = await fetch("/api/history");
+      if (!res.ok) return null;
+      const json = await res.json();
+      if (!json.success) return null;
+
+      const payload: DBHistoryPayload = {
+        quizzes: json.quizzes || [],
+        interviews: json.interviews || [],
+        coachSessions: json.coachSessions || [],
+        jdAnalyses: json.jdAnalyses || [],
+        practiceDates: json.practiceDates || [],
+      };
+
+      // 3. Cache the full SQLite database back into localStorage
+      localStorage.setItem(STORAGE_KEYS.QUIZ_HISTORY, JSON.stringify(payload.quizzes));
+      localStorage.setItem(STORAGE_KEYS.INTERVIEW_SESSIONS, JSON.stringify(payload.interviews));
+      localStorage.setItem(STORAGE_KEYS.COACH_SESSIONS, JSON.stringify(payload.coachSessions));
+      localStorage.setItem(STORAGE_KEYS.JD_ANALYSES, JSON.stringify(payload.jdAnalyses));
+      localStorage.setItem(STORAGE_KEYS.PRACTICE_DATES, JSON.stringify(payload.practiceDates));
+
+      return payload;
+    } catch (e) {
+      console.warn("[storage] Error syncing with SQLite database:", e);
+      return null;
+    }
+  },
+
   // Clear all
   clearAll(): void {
     if (!isBrowser()) return;
     Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
+    fetch("/api/history", { method: "DELETE" }).catch(() => {});
+  },
+
+  clearQuizHistory(): void {
+    if (!isBrowser()) return;
+    localStorage.removeItem(STORAGE_KEYS.QUIZ_HISTORY);
+    fetch("/api/history?type=quiz", { method: "DELETE" }).catch(() => {});
   },
 };
